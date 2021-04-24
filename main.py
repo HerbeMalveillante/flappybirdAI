@@ -7,20 +7,23 @@ import time
 import os
 import random
 pygame.font.init()
+pygame.display.init()
 
 
 WIN_WIDTH = 500
 WIN_HEIGHT = 800
 
+win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
 
-BIRD_IMGS = [pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird1.png"))), pygame.transform.scale2x(
-    pygame.image.load(os.path.join("imgs", "bird2.png"))), pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird3.png")))]
+
+BIRD_IMGS = [pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird1.png"))).convert_alpha(), pygame.transform.scale2x(
+    pygame.image.load(os.path.join("imgs", "bird2.png"))).convert_alpha(), pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird3.png"))).convert_alpha()]
 PIPE_IMG = pygame.transform.scale2x(
-    pygame.image.load(os.path.join("imgs", "pipe.png")))
+    pygame.image.load(os.path.join("imgs", "pipe.png"))).convert_alpha()
 BASE_IMG = pygame.transform.scale2x(
-    pygame.image.load(os.path.join("imgs", "base.png")))
+    pygame.image.load(os.path.join("imgs", "base.png"))).convert_alpha()
 BG_IMG = pygame.transform.scale2x(
-    pygame.image.load(os.path.join("imgs", "bg.png")))
+    pygame.image.load(os.path.join("imgs", "bg.png"))).convert()
 
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
 
@@ -164,7 +167,7 @@ class Base(object):
         win.blit(self.IMG, (self.x2, self.y))
 
 
-def draw_window(win, bird, pipes, base, score):
+def draw_window(win, bird, pipes, base, score, clock):
     win.blit(BG_IMG, (0, 0))
 
     for pipe in pipes:
@@ -172,6 +175,9 @@ def draw_window(win, bird, pipes, base, score):
 
     text = STAT_FONT.render(f"Score : {score}", 1, (255, 255, 255))
     win.blit(text, (WIN_WIDTH - 10 - text.get_width(), 10))
+    framerate = STAT_FONT.render(
+        f"{round(clock.get_fps())} fps", 1, (255, 255, 255))
+    win.blit(framerate, (WIN_WIDTH - 10 - framerate.get_width(), 50))
 
     base.draw(win)
 
@@ -181,7 +187,6 @@ def draw_window(win, bird, pipes, base, score):
 
 def main():
 
-    win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
     clock = pygame.time.Clock()
 
     bird = Bird(230, 350)
@@ -193,6 +198,7 @@ def main():
 
     while run:
         clock.tick(30)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -221,7 +227,7 @@ def main():
             pass
 
         base.move()
-        draw_window(win, bird, pipes, base, score)
+        draw_window(win, bird, pipes, base, score, clock)
 
     pygame.quit()
     quit()
