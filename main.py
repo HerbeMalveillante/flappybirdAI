@@ -1,9 +1,7 @@
-# Tutorial by Tech With Tim
-# https://youtu.be/MMxFDaIOHsE?list=PLzMcBGfZo4-lwGZWXz5Qgta_YNX3_vLS2
+# Thanks to Tech With Tim for the tutorial !
 
 import pygame
 import neat
-import time
 import os
 import random
 pygame.font.init()
@@ -13,7 +11,10 @@ pygame.display.init()
 WIN_WIDTH = 500
 WIN_HEIGHT = 800
 
+GEN = 0
+
 win = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
+clock = pygame.time.Clock()
 
 
 BIRD_IMGS = [pygame.transform.scale2x(pygame.image.load(os.path.join("imgs", "bird1.png"))).convert_alpha(), pygame.transform.scale2x(
@@ -167,7 +168,7 @@ class Base(object):
         win.blit(self.IMG, (self.x2, self.y))
 
 
-def draw_window(win, bird, pipes, base, score, clock):
+def draw_window(win, birds, pipes, base, score, clock, gen):
     win.blit(BG_IMG, (0, 0))
 
     for pipe in pipes:
@@ -178,18 +179,34 @@ def draw_window(win, bird, pipes, base, score, clock):
     framerate = STAT_FONT.render(
         f"{round(clock.get_fps())} fps", 1, (255, 255, 255))
     win.blit(framerate, (WIN_WIDTH - 10 - framerate.get_width(), 50))
+    gentext = STAT_FONT.render(f"Gen : {gen}", 1, (255, 255, 255))
+    win.blit(gentext, (10, 10))
+    birdstext = STAT_FONT.render(
+        f"Alive birds : {len(birds)}", 1, (255, 255, 255))
+    win.blit(birdstext, (10, 50))
 
     base.draw(win)
-
-    bird.draw(win)
+    for bird in birds:
+        bird.draw(win)
     pygame.display.update()
 
 
-def main():
+def main(genomes, config):
 
-    clock = pygame.time.Clock()
+    global GEN
+    GEN += 1
 
-    bird = Bird(230, 350)
+    nets = []
+    ge = []
+    birds = []
+
+    for _, g in genomes:
+        net = neat.nn.FeedForwardNetwork.create(g, config)
+        nets.append(net)
+        birds.append(Bird(230, 350))
+        g.fitness = 0
+        ge.append(g)
+
     base = Base(730)
     pipes = [Pipe(600)]
 
@@ -197,40 +214,82 @@ def main():
     run = True
 
     while run:
-        clock.tick(30)
+        clock.tick(60)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+                pygame.quit()
+                quit()
+
+        pipe_ind = 0
+        if len(birds) > 0:
+            if len(pipes) > 1 and birds[0].x > pipes[0].x + pipes[0].PIPE_TOP.get_width():
+                pipe_ind = 1
+        else:
+            run = False
+            break
+
+        for x, bird in enumerate(birds):
+            bird.move()
+            ge[x].fitness += 0.1
+
+            output = nets[x].activate(
+                (bird.y, abs(bird.y - pipes[pipe_ind].height), abs(bird.y - pipes[pipe_ind].bottom)))
+            if output[0] > 0.5:
+                bird.jump()
 
         # bird.move()
         add_pipe = False
         rem = []
         for pipe in pipes:
-            if pipe.collide(bird):
-                pass
+            for x, bird in enumerate(birds):
+                if pipe.collide(bird):
+                    ge[x].fitness -= 1
+                    birds.pop(x)
+                    nets.pop(x)
+                    ge.pop(x)
+
+                if not pipe.passed and pipe.x < bird.x:
+                    pipe.passed = True
+                    add_pipe = True
+
             if pipe.x + pipe.PIPE_TOP.get_width() < 0:
                 rem.append(pipe)
-
-            if not pipe.passed and pipe.x < bird.x:
-                pipe.passed = True
-                add_pipe = True
             pipe.move()
         if add_pipe:
             score += 1
             pipes.append(Pipe(600))
+            for g in ge:
+                g.fitness += 5
 
         for r in rem:
             pipes.remove(r)
 
-        if bird.y + bird.img.get_height() >= 730:
-            pass
+        for x, bird in enumerate(birds):
+            if bird.y + bird.img.get_height() >= 730 or bird.y < 0:
+                birds.pop(x)
+                nets.pop(x)
+                ge.pop(x)
 
         base.move()
-        draw_window(win, bird, pipes, base, score, clock)
-
-    pygame.quit()
-    quit()
+        draw_window(win, birds, pipes, base, score, clock, GEN)
 
 
-main()
+def run(config_path):
+    config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                                neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
+
+    p = neat.Population(config)
+
+    p.add_reporter(neat.StdOutReporter(True))
+    stats = neat.StatisticsReporter()
+    p.add_reporter(stats)
+
+    winnner = p.run(main, 50)
+
+
+if __name__ == "__main__":
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir, "config-feedforward.txt")
+    run(config_path)
