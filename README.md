@@ -2,11 +2,13 @@
 
 # This program is a replica of the famous Flappy Bird game with Pygame and the neat-python module.
 
+## [Video demonstration !](https://youtu.be/00ODtHO91do)
+
 This uses the Neuroevolution of augmenting topologies (NEAT) to create a super effective neural network allowing the AI to perform like a charm after a very low amount of generations. Collisions are pixel perfect, allowing the game to play smoothly and collisions to be super accurate (inaccurate collisions being the main source of frustration in most of public Flappy Bird clones.)
 
 ![screenshot in action](imgs/screenshot.png)
 
-[Video demonstration !](https://youtu.be/00ODtHO91do)
+
 
 ![The network shape](imgs/scheme.png)
 
